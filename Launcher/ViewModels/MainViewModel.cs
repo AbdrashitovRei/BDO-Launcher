@@ -24,7 +24,6 @@ public partial class MainViewModel : ViewModelBase
     private IBrowserContext _browser;
     private Configuration _configuration;
     private Window _otpWindow;
-    private const string _version = "2.0.7";
 
     public MainViewModel()
     {
@@ -455,7 +454,7 @@ public partial class MainViewModel : ViewModelBase
             var json = JArray.Parse(innerText);
             var name = json[0]?["name"];
             
-            if (name != null && name.Value<string>() != _version)
+            if (name != null && name.Value<string>() != App.Version)
             {
                 var msgBox =  MsgBoxManager.GetMessageBox("Custom Launcher Update Notice",
                     "New version is available for this launcher, would you like to update?",

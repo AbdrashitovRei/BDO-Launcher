@@ -62,7 +62,7 @@ public class AuthenticationServiceProvider
             await page.GotoAsync(LauncherReturnUrl);
             
             // Check for maintenance
-            string errorMsg = await AdditionalErrorsCheck(page, "maintenance");
+            string errorMsg = await MaintenanceCheck(page);
             if (!string.IsNullOrEmpty(errorMsg))
                 return errorMsg;
 
@@ -123,23 +123,23 @@ public class AuthenticationServiceProvider
             await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
             
             // Check for password change notification
-            errorMsg = await AdditionalErrorsCheck(page, "password change");
-            if (!string.IsNullOrEmpty(errorMsg))
+            var btnGamePlayTask    = page.WaitForSelectorAsync("a[id=btnGamePlay]");
+            var passwordChangeTask = page.WaitForSelectorAsync(".container.error.closetime",
+                new PageWaitForSelectorOptions { Timeout = 5000 });
+
+            if (await Task.WhenAny(btnGamePlayTask, passwordChangeTask) == passwordChangeTask)
             {
-                if (errorMsg.Contains("Change Password"))
-                {
-                    var msgBox =  MsgBoxManager.GetMessageBox("Password Too Old Error",
-                        $"Your password is too old, please login using the official launcher to change your password\n\nThis error is from the game server, it will come up every 3 months",
-                        true, false, false,
-                        async void () => { 
-                            await page.ClickAsync("#btnPasswordChangeLater"); });
-                    
-                    await msgBox.ShowAsync();
-                }
+                var msgBox = MsgBoxManager.GetMessageBox("Password Too Old Error",
+                    $"Your password is too old, please login using the official launcher to change your password\n\nThis error is from the game server, it will come up every 3 months",
+                    true, false, false,
+                    async void () => {
+                        await page.ClickAsync("#btnPasswordChangeLater"); });
+
+                await msgBox.ShowAsync();
             }
-            
+
             // Wait for Start Game btn to load
-            await page.WaitForSelectorAsync("a[id=btnGamePlay]");
+            await btnGamePlayTask;
             
             // Push a POST msg to fetch login code
             var data = new Dictionary<string, string>();
@@ -235,30 +235,23 @@ public class AuthenticationServiceProvider
         }
     }
     
-    private async Task<string> AdditionalErrorsCheck(IPage page, string step)
+    private async Task<string> MaintenanceCheck(IPage page)
     {
         // The following script checks for maintenance (.box_error) and
-        // password change notification (.container.error.closetime)
-        var additionalErrorsCheckScript = @"
+        var maintenanceCheckScript = @"
                 (function(){
-                    var query1 = document.querySelector('.box_error');
-                    var query2 = document.querySelector('.container.error.closetime');
-                    var result = null;
-                    if(query1 != null)
-                        result = query1.innerText;
-                    else if(query2 != null)
-                        result = query2.innerText;
-                    return result;
+                    var query = document.querySelector('.box_error');
+                    return query != null ? query.innerText : null;
                 })()";
         
         string errorMsg = null;
         try
         {
-            errorMsg = await page.EvaluateAsync<string>(additionalErrorsCheckScript);
+            errorMsg = await page.EvaluateAsync<string>(maintenanceCheckScript);
         }
         catch (Exception e)
         {
-            MsgBoxManager.GetMessageBox($"{step} Fail", e.Message);
+            MsgBoxManager.GetMessageBox($"MaintenanceCheck Fail", e.Message);
             throw;
         }
         return !string.IsNullOrEmpty(errorMsg) ? errorMsg : null;
