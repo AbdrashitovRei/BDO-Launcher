@@ -48,6 +48,7 @@ public class AuthenticationServiceProvider
             {
                 if (route.Request.Url.StartsWith("https://launcher." + launcherRegion + ".playblackdesert.com") ||
                     route.Request.Url.StartsWith("https://account.pearlabyss.com") ||
+                    route.Request.Url.StartsWith("https://static.pearlcdn.com/asset/account/global/contents/js") ||
                     route.Request.Url.StartsWith("https://s1.pearlcdn.com/account/contents/js") ||
                     route.Request.Url.Contains("hcaptcha.com"))
                 {
